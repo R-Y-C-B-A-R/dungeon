@@ -153,12 +153,15 @@ def render_sprites(buf, state, z_buf, W, view_h):
         sx_end = sx_start + lw - 1
 
         sprite_h = max(1, int(view_h / dist))
+        n_rows = min(max(1, sprite_h // 6), view_h // 3)
         mid_y = view_h // 2
+        row_start = mid_y - n_rows // 2
 
-        for ci, ch in enumerate(label):
-            sx = sx_start + ci
-            if 0 <= sx < W and 0 <= mid_y < view_h and dist < z_buf[sx]:
-                buf[mid_y * W + sx] = ch
+        for row in range(row_start, row_start + n_rows):
+            for ci, ch in enumerate(label):
+                sx = sx_start + ci
+                if 0 <= sx < W and 0 <= row < view_h and dist < z_buf[sx]:
+                    buf[row * W + sx] = ch
 
 
 def _hp_bar(hp, max_hp, width=10):
@@ -202,6 +205,15 @@ def render_frame(state, W, H, show_map=False):
             buf[row * W + col] = ch
 
     render_sprites(buf, state, z_buf, W, view_h)
+
+    if state.hit_flash > 0:
+        flash_ch = '▓' if state.hit_flash % 4 < 2 else '░'
+        for ci in range(W):
+            buf[ci] = flash_ch
+            buf[(view_h - 1) * W + ci] = flash_ch
+        for row in range(view_h):
+            buf[row * W] = flash_ch
+            buf[row * W + W - 1] = flash_ch
 
     if show_map:
         _draw_minimap(buf, state, W, view_h)
@@ -299,6 +311,7 @@ def setup_terminal():
 
 
 def restore_terminal(fd, old):
+    termios.tcflush(fd, termios.TCIFLUSH)
     termios.tcsetattr(fd, termios.TCSADRAIN, old)
     sys.stdout.write('\033[?25h\033[H\033[2J')
 
